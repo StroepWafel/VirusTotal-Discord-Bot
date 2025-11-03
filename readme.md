@@ -14,6 +14,7 @@ Bot Permissions:
 - Read Message History
 - Add reactions
 
+The bot also requires the 'message_content' intent to be checked
 Todo:
 
 update readme lol
