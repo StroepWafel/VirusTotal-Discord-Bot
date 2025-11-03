@@ -268,3 +268,7 @@ You can customize the bot behavior by editing the variables at the top of `main.
 ## License
 
 See LICENSE file for details.
+
+## ToDo
+
+- Add list of filetypes to ignore when scanning
