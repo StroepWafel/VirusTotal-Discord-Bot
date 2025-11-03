@@ -15,6 +15,7 @@ Bot Permissions:
 - Add reactions
 
 The bot also requires the 'message_content' intent to be checked
-Todo:
+
+# Todo:
 
 update readme lol
