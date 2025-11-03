@@ -85,7 +85,7 @@ sudo apt install python3 python3-pip python3-venv -y
 If you're using Git:
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/StroepWafel/VirusTotal-Discord-Bot
 cd VirusTotal-Discord-Bot
 ```
 
@@ -135,7 +135,16 @@ Run the bot manually to ensure everything works:
 python3 main.py
 ```
 
-You should see "Logged in as [Bot Name]!" if everything is configured correctly. Press Ctrl+C to stop the bot.
+You should see "Logged in as [Bot Name]!" if everything is configured correctly. 
+
+Upload a file to the server the bot is in to check everything is working, you should eventually see a message similar to:
+```bash
+Scan completed for <filename>. 
+X/Y vendors marked this file as malicious. 
+More details can be found here: https://www.virustotal.com/gui/file/<SHA256>/detection 
+```
+
+Press Ctrl+C to stop the bot.
 
 ### Step 8: Create a Systemd Service (Recommended)
 
@@ -169,7 +178,9 @@ WantedBy=multi-user.target
 
 Replace:
 - `your-username` with your Ubuntu username
-- `/path/to/VirusTotal-Discord-Bot` with the actual path to your bot directory
+- `/path/to/VirusTotal-Discord-Bot` with the actual path to your bot directory (for me this was `/root/VirusTotal-Discord-Bot`)
+
+Save the file (Ctrl+X, then Y, then Enter if using nano).
 
 3. Reload systemd and start the service:
 
