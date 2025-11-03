@@ -1,0 +1,1 @@
+Make sure you are in this directory and install requirements from cmd with `pip install -r requirements.txt`
