@@ -2,6 +2,42 @@
 
 A Discord bot that automatically scans file attachments using VirusTotal's API to help keep your server safe from malicious files.
 
+## Table of Contents
+
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Creating a Discord Bot](#creating-a-discord-bot)
+  - [Step 1: Create a Discord Application](#step-1-create-a-discord-application)
+  - [Step 2: Create a Bot](#step-2-create-a-bot)
+  - [Step 3: Set Bot Permissions](#step-3-set-bot-permissions)
+  - [Step 4: Invite Bot to Your Server](#step-4-invite-bot-to-your-server)
+- [Getting a VirusTotal API Key](#getting-a-virustotal-api-key)
+- [Hosting on Ubuntu Server](#hosting-on-ubuntu-server)
+  - [Step 1: Update System Packages](#step-1-update-system-packages)
+  - [Step 2: Install Python and pip](#step-2-install-python-and-pip)
+  - [Step 3: Clone or Upload the Bot Files](#step-3-clone-or-upload-the-bot-files)
+  - [Step 4: Create a Virtual Environment](#step-4-create-a-virtual-environment)
+  - [Step 5: Install Dependencies](#step-5-install-dependencies)
+  - [Step 6: Configure the Bot](#step-6-configure-the-bot)
+  - [Step 7: Test the Bot](#step-7-test-the-bot)
+  - [Step 8: Create a Systemd Service (Recommended)](#step-8-create-a-systemd-service-recommended)
+  - [Step 9: Firewall Configuration (if applicable)](#step-9-firewall-configuration-if-applicable)
+- [Usage](#usage)
+- [Configuration Options](#configuration-options)
+  - [Required Configuration](#required-configuration)
+  - [Bot Behavior Settings](#bot-behavior-settings)
+  - [Message Templates](#message-templates)
+  - [Configuration File Details](#configuration-file-details)
+- [Updating the Bot](#updating-the-bot)
+  - [Manual Update](#manual-update)
+  - [Automatic Updates (Optional)](#automatic-updates-optional)
+  - [Alternative: Cron Job for Auto-Updates](#alternative-cron-job-for-auto-updates)
+  - [Important Notes](#important-notes)
+- [Uninstalling the Bot](#uninstalling-the-bot)
+- [Troubleshooting](#troubleshooting)
+- [Security Notes](#security-notes)
+- [License](#license)
+
 ## Features
 
 - Automatically scans file attachments posted in Discord channels
@@ -132,54 +168,49 @@ Press Ctrl+C to stop the bot.
 nano config.json
 ```
 
-The file will already exist with default values. You just need to add your credentials. Find these lines and replace the empty strings with your actual tokens:
+The file will already exist with default values in JSON format. You just need to add your credentials. Find the `"bot_token"` and `"virustotal_api_key"` fields and replace the empty strings with your actual tokens:
 
-```python
-bot_token = 'YOUR_DISCORD_BOT_TOKEN_HERE'
-virustotal_api_key = 'YOUR_VIRUSTOTAL_API_KEY_HERE'
+```json
+{
+    "bot_token": "YOUR_DISCORD_BOT_TOKEN_HERE",
+    "virustotal_api_key": "YOUR_VIRUSTOTAL_API_KEY_HERE"
+}
 ```
 
-Or if you prefer to see the full template, the file contains:
+The full configuration file structure looks like this:
 
-```python
-# Discord bot token, you can get your own token by creating a bot at https://discord.com/developers/applications
-bot_token = 'YOUR_DISCORD_BOT_TOKEN_HERE'
-
-# VirusTotal API key for scanning, you can get your own key by signing up at https://www.virustotal.com/gui/join-us
-virustotal_api_key = 'YOUR_VIRUSTOTAL_API_KEY_HERE'
-
-# Mention the author of the reply when sending warnings about large files? Set to True to enable.
-mention_reply_author = False
-
-# Timeout for waiting for scan results in seconds
-timeout_seconds = 300  # 5 minutes
-
-# Maximum number of attempts to check for scan results when an error occurs
-max_attempts = 2
-
-# File recieved message
-file_recieved_message = ('Attachment `{filename}` received. Submitting for scanning...')
-
-# Warning message for files larger than 1 GB
-file_too_large_warning = ('Attachment `{filename}` is too large ({file_size} bytes). Maximum allowed size is 1 GB. Proceed with caution')
-
-# Warning message for download errors
-download_error_warning = ('Attachment `{filename}` could not be downloaded. Please proceed with caution.')
-
-# File submitted for scanning message
-file_submitted_for_scanning_message = ('Attachment `{filename}` has been submitted for scanning. Analysis ID: {analysis_id}')
-
-# Error when scanning file message
-file_scanning_error_message = ('Error scanning `{filename}`: {e}')
-
-# Scan results message (\n means new line)
-results_recieved_message = ('Scan completed for `{filename}`. \n {malicious_count}/{total_engines} vendors marked this file as malicious. \n More details can be found here: {results_url}')
-
-# Scan timeout message
-scan_timeout_message = ('Scan for `{filename}` timed out after waiting for {timeout} seconds. \n You might still be able to check the results here: {results_url}')
-
-# Ignored filetypes (not scanned)
-ignored_filetypes = ['.txt', '.md', '.json', '.xml', '.csv', '.log', '.ini', '.cfg', '.conf', '.yaml', '.yml']
+```json
+{
+    "bot_token": "",
+    "virustotal_api_key": "",
+    "mention_reply_author": false,
+    "timeout_seconds": 300,
+    "max_attempts": 2,
+    "file_recieved_message": "Attachment `{filename}` received. Submitting for scanning...",
+    "file_too_large_warning": "Attachment `{filename}` is too large ({file_size} bytes). Maximum allowed size is 1 GB. Proceed with caution",
+    "download_error_warning": "Attachment `{filename}` could not be downloaded. Please proceed with caution.",
+    "file_submitted_for_scanning_message": "Attachment `{filename}` has been submitted for scanning. Analysis ID: {analysis_id}",
+    "file_scanning_error_message": "Error scanning `{filename}`: {e}",
+    "results_recieved_message": "Scan completed for `{filename}`. \n {malicious_count}/{total_engines} vendors marked this file as malicious. \n More details can be found here: {results_url}",
+    "scan_timeout_message": "Scan for `{filename}` timed out after waiting for {timeout} seconds. \n You might still be able to check the results here: {results_url}",
+    "ignored_filetypes": [
+        ".txt",
+        ".md",
+        ".json",
+        ".xml",
+        ".csv",
+        ".log",
+        ".ini",
+        ".cfg",
+        ".conf",
+        ".yaml",
+        ".yml",
+        ".png",
+        ".webp",
+        ".jpeg",
+        ".jpg"
+    ]
+}
 ```
 
 3. Replace `YOUR_DISCORD_BOT_TOKEN_HERE` and `YOUR_VIRUSTOTAL_API_KEY_HERE` with your actual tokens. You can customize any of the other settings as needed.
@@ -301,42 +332,42 @@ You can customize the bot behavior by editing the variables in your `config.json
 - Your Discord bot token obtained from the Discord Developer Portal
 - Get your token at: https://discord.com/developers/applications
 - This is required for the bot to connect to Discord
-- Example: `bot_token = 'YOUR_DISCORD_BOT_TOKEN_HERE'`
+- Example in `config.json`: `"bot_token": "YOUR_DISCORD_BOT_TOKEN_HERE"`
 
 **`virustotal_api_key`** (string, required)
 - Your VirusTotal API key for scanning files
 - Sign up and get your API key at: https://www.virustotal.com/gui/join-us
 - This is required for the bot to scan files
-- Example: `virustotal_api_key = 'YOUR_VIRUSTOTAL_API_KEY_HERE'`
+- Example in `config.json`: `"virustotal_api_key": "YOUR_VIRUSTOTAL_API_KEY_HERE"`
 
 ### Bot Behavior Settings
 
-**`mention_reply_author`** (boolean, default: `False`)
+**`mention_reply_author`** (boolean, default: `false`)
 - Whether to mention (ping) the original message author when replying with scan results
-- Set to `True` to ping the user who uploaded the file
-- Set to `False` to reply without mentioning (recommended for busy servers)
-- Example: `mention_reply_author = True`
+- Set to `true` to ping the user who uploaded the file
+- Set to `false` to reply without mentioning (recommended for busy servers)
+- Example in `config.json`: `"mention_reply_author": true`
 
 **`timeout_seconds`** (integer, default: `300`)
 - How long to wait (in seconds) for VirusTotal scan results before timing out
 - Default is 300 seconds (5 minutes)
 - Increase this value if you want to wait longer for scan results (e.g., for large files)
 - Decrease this value if you want faster responses (may result in more timeouts)
-- Example: `timeout_seconds = 600  # 10 minutes`
+- Example in `config.json`: `"timeout_seconds": 600`
 
 **`max_attempts`** (integer, default: `2`)
 - Maximum number of retry attempts when checking for scan results if an error occurs
 - If VirusTotal API returns an error, the bot will retry this many times before giving up
 - Increase for better reliability (e.g., `3` or `4`)
 - Decrease for faster failure notifications
-- Example: `max_attempts = 3`
+- Example in `config.json`: `"max_attempts": 3`
 
-**`ignored_filetypes`** (list, default: `['.txt', '.md', '.json', '.xml', '.csv', '.log', '.ini', '.cfg', '.conf', '.yaml', '.yml']`)
-- List of file extensions (with leading dot) that the bot should ignore and not scan
+**`ignored_filetypes`** (array, default: `[".txt", ".md", ".json", ".xml", ".csv", ".log", ".ini", ".cfg", ".conf", ".yaml", ".yml", ".png", ".webp", ".jpeg", ".jpg"]`)
+- Array of file extensions (with leading dot) that the bot should ignore and not scan
 - Files with these extensions will be silently ignored to reduce unnecessary scans
 - Add or remove file extensions as needed for your server
-- Example: `ignored_filetypes = ['.txt', '.md', '.png', '.jpg', '.gif', '.webp']`
-- To scan all files, use an empty list: `ignored_filetypes = []`
+- Example in `config.json`: `"ignored_filetypes": [".txt", ".md", ".png", ".jpg", ".gif", ".webp"]`
+- To scan all files, use an empty array: `"ignored_filetypes": []`
 
 ### Message Templates
 
@@ -345,39 +376,39 @@ You can customize all the messages the bot sends. Use placeholders like `{filena
 **`file_recieved_message`** (string)
 - Message sent when a file attachment is first received
 - Available placeholders: `{filename}`
-- Example: `file_recieved_message = ('Attachment `{filename}` received. Submitting for scanning...')`
+- Example in `config.json`: `"file_recieved_message": "Attachment `{filename}` received. Submitting for scanning..."`
 
 **`file_too_large_warning`** (string)
 - Message sent when a file is too large to scan (over 1 GB)
 - Available placeholders: `{filename}`, `{file_size}`
-- Example: `file_too_large_warning = ('Attachment `{filename}` is too large ({file_size} bytes). Maximum allowed size is 1 GB. Proceed with caution')`
+- Example in `config.json`: `"file_too_large_warning": "Attachment `{filename}` is too large ({file_size} bytes). Maximum allowed size is 1 GB. Proceed with caution"`
 
 **`download_error_warning`** (string)
 - Message sent when the bot cannot download the file attachment from Discord
 - Available placeholders: `{filename}`
-- Example: `download_error_warning = ('Attachment `{filename}` could not be downloaded. Please proceed with caution.')`
+- Example in `config.json`: `"download_error_warning": "Attachment `{filename}` could not be downloaded. Please proceed with caution."`
 
 **`file_submitted_for_scanning_message`** (string)
 - Message sent when a file has been successfully submitted to VirusTotal for scanning
 - Available placeholders: `{filename}`, `{analysis_id}`
-- Example: `file_submitted_for_scanning_message = ('Attachment `{filename}` has been submitted for scanning. Analysis ID: {analysis_id}')`
+- Example in `config.json`: `"file_submitted_for_scanning_message": "Attachment `{filename}` has been submitted for scanning. Analysis ID: {analysis_id}"`
 
 **`file_scanning_error_message`** (string)
 - Message sent when an error occurs during the scanning process
 - Available placeholders: `{filename}`, `{e}` (error message)
-- Example: `file_scanning_error_message = ('Error scanning `{filename}`: {e}')`
+- Example in `config.json`: `"file_scanning_error_message": "Error scanning `{filename}`: {e}"`
 
 **`results_recieved_message`** (string)
 - Message sent when scan results are received from VirusTotal
 - Available placeholders: `{filename}`, `{malicious_count}`, `{total_engines}`, `{results_url}`
 - Use `\n` for new lines in the message
-- Example: `results_recieved_message = ('Scan completed for `{filename}`. \n {malicious_count}/{total_engines} vendors marked this file as malicious. \n More details can be found here: {results_url}')`
+- Example in `config.json`: `"results_recieved_message": "Scan completed for `{filename}`. \n {malicious_count}/{total_engines} vendors marked this file as malicious. \n More details can be found here: {results_url}"`
 
 **`scan_timeout_message`** (string)
 - Message sent when the scan times out before completion
 - Available placeholders: `{filename}`, `{timeout}`, `{results_url}`
 - Use `\n` for new lines in the message
-- Example: `scan_timeout_message = ('Scan for `{filename}` timed out after waiting for {timeout} seconds. \n You might still be able to check the results here: {results_url}')`
+- Example in `config.json`: `"scan_timeout_message": "Scan for `{filename}` timed out after waiting for {timeout} seconds. \n You might still be able to check the results here: {results_url}"`
 
 ### Configuration File Details
 
