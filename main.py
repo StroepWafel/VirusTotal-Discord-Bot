@@ -244,6 +244,7 @@ class DiscordClient(discord.Client):
                         )
                         await reply_msg.edit(content=separator.join(results_sections))
 
+                        
                         start_time = datetime.now()
                         attempt = 0
 
