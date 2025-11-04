@@ -336,10 +336,10 @@ class DiscordClient(discord.Client):
                     await reply_msg.edit(
                         content = file_submitted_for_scanning_message.format(
                             filename=filename, 
-                            analysis_id=analysis.id
+                            file_hash=file_hash
                             )
                     )
-                    print(f'Submitted {filename} for scanning. Analysis ID: {analysis.id}')
+                    print(f'Submitted {filename} for scanning. File Hash: {file_hash}')
 
                     start_time = datetime.now()
                     attempt = 0
