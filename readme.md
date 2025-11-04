@@ -5,6 +5,7 @@ A Discord bot that automatically scans file attachments using VirusTotal's API t
 ## Table of Contents
 
 - [Features](#features)
+- [Demo](#demo)
 - [Prerequisites](#prerequisites)
 - [Creating a Discord Bot](#creating-a-discord-bot)
   - [Step 1: Create a Discord Application](#step-1-create-a-discord-application)
@@ -44,6 +45,9 @@ A Discord bot that automatically scans file attachments using VirusTotal's API t
 - Supports multiple file attachments in a single message
 - Provides real-time scan results with links to detailed VirusTotal reports
 - Handles large files and timeouts gracefully
+
+## Demo:
+https://discord.gg/BPRdkATNB6
 
 ## Prerequisites
 
