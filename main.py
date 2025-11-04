@@ -1,5 +1,6 @@
 # This bot requires the 'message_content' intent.
 
+import json
 import discord
 import vt
 import aiohttp
@@ -7,8 +8,14 @@ import io
 import asyncio
 from datetime import datetime, timedelta
 import hashlib
+import os
 
-# Discord bot token, you can get your own token by creating a bot at https://discord.com/developers/applications, a good guide is available at https://discordpy.readthedocs.io/en/stable/discord.html
+# Load configuration from config_local.py if it exists, otherwise use defaults
+# This allows you to keep your configuration in a separate file that won't be overwritten by updates
+
+# Create config_local.py if it doesn't exist
+if not os.path.exists('config_local.py'):
+    config_template = '''# Discord bot token, you can get your own token by creating a bot at https://discord.com/developers/applications
 bot_token = ''
 
 # VirusTotal API key for scanning, you can get your own key by signing up at https://www.virustotal.com/gui/join-us
@@ -26,7 +33,7 @@ max_attempts = 2
 # File recieved message
 file_recieved_message = ('Attachment `{filename}` received. Submitting for scanning...')
 
-# Warning message for files larger than 1 GB (should not be needed as discord's maximum upload size is 500 mb, but included just in case)
+# Warning message for files larger than 1 GB (should not be needed as discord's maximum upload size is 500 mb, but included just in case)
 file_too_large_warning = ('Attachment `{filename}` is too large ({file_size} bytes). Maximum allowed size is 1 GB. Proceed with caution')
 
 # Warning message for download errors
@@ -38,11 +45,63 @@ file_submitted_for_scanning_message = ('Attachment `{filename}` has been submitt
 # Error when scanning file message
 file_scanning_error_message = ('Error scanning `{filename}`: {e}')
 
-# Scan results message (\n means new line)
-results_recieved_message = ('Scan completed for `{filename}`. \n {malicious_count}/{total_engines} vendors marked this file as malicious. \n More details can be found here: {results_url}')
+# Scan results message (\\n means new line)
+results_recieved_message = ('Scan completed for `{filename}`. \\n {malicious_count}/{total_engines} vendors marked this file as malicious. \\n More details can be found here: {results_url}')
 
 # Scan timeout message
-scan_timeout_message = ('Scan for `{filename}` timed out after waiting for {timeout} seconds. \n You might still be able to check the results here: {results_url}')
+scan_timeout_message = ('Scan for `{filename}` timed out after waiting for {timeout} seconds. \\n You might still be able to check the results here: {results_url}')
+
+# Ignored filetypes (not scanned)
+ignored_filetypes = ['.txt', '.md', '.json', '.xml', '.csv', '.log', '.ini', '.cfg', '.conf', '.yaml', '.yml']
+'''
+
+    with open('config_local.py', 'w') as f:
+        f.write(config_template)
+    print("Created config_local.py - please edit it with your bot token and VirusTotal API key")
+
+try:
+    from config_local import *
+    print("Loaded configuration from config_local.py")
+except ImportError:
+    # Default configuration values (used if config_local.py doesn't exist)
+    # Discord bot token, you can get your own token by creating a bot at https://discord.com/developers/applications, a good guide is available at https://discordpy.readthedocs.io/en/stable/discord.html
+    bot_token = ''
+
+    # VirusTotal API key for scanning, you can get your own key by signing up at https://www.virustotal.com/gui/join-us
+    virustotal_api_key = ''
+
+    # Mention the author of the reply when sending warnings about large files? Set to True to enable.
+    mention_reply_author = False
+
+    # Timeout for waiting for scan results in seconds
+    timeout_seconds = 300  # 5 minutes
+
+    # Maximum number of attempts to check for scan results when an error occurs
+    max_attempts = 2
+
+    # File recieved message
+    file_recieved_message = ('Attachment `{filename}` received. Submitting for scanning...')
+
+    # Warning message for files larger than 1 GB (should not be needed as discord's maximum upload size is 500 mb, but included just in case)
+    file_too_large_warning = ('Attachment `{filename}` is too large ({file_size} bytes). Maximum allowed size is 1 GB. Proceed with caution')
+
+    # Warning message for download errors
+    download_error_warning = ('Attachment `{filename}` could not be downloaded. Please proceed with caution.')
+
+    # File submitted for scanning message
+    file_submitted_for_scanning_message = ('Attachment `{filename}` has been submitted for scanning. Analysis ID: {analysis_id}')
+
+    # Error when scanning file message
+    file_scanning_error_message = ('Error scanning `{filename}`: {e}')
+
+    # Scan results message (\n means new line)
+    results_recieved_message = ('Scan completed for `{filename}`. \n {malicious_count}/{total_engines} vendors marked this file as malicious. \n More details can be found here: {results_url}')
+
+    # Scan timeout message
+    scan_timeout_message = ('Scan for `{filename}` timed out after waiting for {timeout} seconds. \n You might still be able to check the results here: {results_url}')
+
+    # Ignored filetypes (not scanned)
+    ignored_filetypes = ['.txt', '.md', '.json', '.xml', '.csv', '.log', '.ini', '.cfg', '.conf', '.yaml', '.yml']
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -60,6 +119,10 @@ class DiscordClient(discord.Client):
             return
 
         if not message.attachments:
+            return
+
+        if any(message.attachments[0].filename.lower().endswith(ext) for ext in ignored_filetypes):
+            print(f'Ignoring attachment {message.attachments[0].filename} from {message.author} due to ignored filetype.')
             return
 
         if len(message.attachments) > 1:

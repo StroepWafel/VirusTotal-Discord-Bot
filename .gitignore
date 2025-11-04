@@ -1,0 +1,25 @@
+# Local configuration file (contains sensitive tokens and API keys)
+config.json
+config.json.backup_*
+
+# Python cache and virtual environment
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
