@@ -139,7 +139,7 @@ default_config = {
     "file_recieved_message": "Attachment `{filename}` received. Submitting for scanning...",
     "file_too_large_warning": "Attachment `{filename}` is too large ({file_size} bytes). Maximum allowed size is 1 GB. Proceed with caution",
     "download_error_warning": "Attachment `{filename}` could not be downloaded. Please proceed with caution.",
-    "file_submitted_for_scanning_message": "Attachment `{filename}` has been submitted for scanning. Analysis ID: {analysis_id}",
+    "file_submitted_for_scanning_message": "Attachment `{filename}` has been submitted for scanning. File hash: {file_hash}",
     "file_scanning_error_message": "Error scanning `{filename}`: {e}",
     "results_recieved_message": "Scan completed for `{filename}`. \n {malicious_count}/{total_engines} vendors marked this file as malicious. \n More details can be found here: {results_url}",
     "scan_timeout_message": "Scan for `{filename}` timed out after waiting for {timeout} seconds. \n You might still be able to check the results here: {results_url}",
@@ -237,10 +237,10 @@ class DiscordClient(discord.Client):
                 try:
                     async with vt.Client(virustotal_api_key) as vt_client:
                         analysis = await vt_client.scan_file_async(file_stream)
-                        print(f'Submitted {filename} for scanning. Analysis ID: {analysis.id}')
+                        print(f'Submitted {filename} for scanning. File Hash: {file_hash}')
                         results_sections[idx] = file_submitted_for_scanning_message.format(
                             filename=filename,
-                            analysis_id=analysis.id
+                            file_hash=file_hash
                         )
                         await reply_msg.edit(content=separator.join(results_sections))
 
