@@ -112,9 +112,9 @@ pip install -r requirements.txt
 
 ### Step 6: Configure the Bot
 
-The bot uses an external configuration file (`config_local.py`) to store your settings. This file is not tracked by git and will not be overwritten during updates, keeping your configuration safe.
+The bot uses an external configuration file (`config.json`) to store your settings. This file is not tracked by git and will not be overwritten during updates, keeping your configuration safe.
 
-**Important:** The bot will automatically create `config_local.py` on first run. You must run the bot at least once (even if it fails to start) to generate this file before you can edit it.
+**Important:** The bot will automatically create `config.json` on first run. You must run the bot at least once (even if it fails to start) to generate this file before you can edit it.
 
 1. First, run the bot to generate the configuration file:
 
@@ -122,14 +122,14 @@ The bot uses an external configuration file (`config_local.py`) to store your se
 python3 main.py
 ```
 
-The bot will fail to start (since tokens aren't set yet), but it will create `config_local.py` with default values. You should see a message like: "Created config_local.py - please edit it with your bot token and VirusTotal API key"
+The bot will fail to start (since tokens aren't set yet), but it will create `config.json` with default values. You should see a message like: "Created config.json - please edit it with your bot token and VirusTotal API key"
 
 Press Ctrl+C to stop the bot.
 
 2. Now edit the configuration file:
 
 ```bash
-nano config_local.py
+nano config.json
 ```
 
 The file will already exist with default values. You just need to add your credentials. Find these lines and replace the empty strings with your actual tokens:
@@ -186,7 +186,7 @@ ignored_filetypes = ['.txt', '.md', '.json', '.xml', '.csv', '.log', '.ini', '.c
 
 4. Save the file (Ctrl+X, then Y, then Enter if using nano).
 
-**Important:** The `config_local.py` file is excluded from git (via `.gitignore`), so your tokens and configuration will never be overwritten by updates. The bot automatically creates this file on first run, making setup easier. Simply run the bot once, then edit the generated file with your credentials.
+**Important:** The `config.json` file is excluded from git (via `.gitignore`), so your tokens and configuration will never be overwritten by updates. The bot automatically creates this file on first run, making setup easier. Simply run the bot once, then edit the generated file with your credentials.
 
 ### Step 7: Test the Bot
 
@@ -291,9 +291,9 @@ The bot will reply with:
 
 ## Configuration Options
 
-You can customize the bot behavior by editing the variables in your `config_local.py` file. The bot will automatically create this file with default values on first run if it doesn't exist.
+You can customize the bot behavior by editing the variables in your `config.json` file. The bot will automatically create this file with default values on first run if it doesn't exist.
 
-**Important:** You must run the bot at least once (even if it fails to start due to missing tokens) to generate the `config_local.py` file. After it's created, you can edit it with your credentials and restart the bot.
+**Important:** You must run the bot at least once (even if it fails to start due to missing tokens) to generate the `config.json` file. After it's created, you can edit it with your credentials and restart the bot.
 
 ### Required Configuration
 
@@ -381,14 +381,14 @@ You can customize all the messages the bot sends. Use placeholders like `{filena
 
 ### Configuration File Details
 
-The configuration file `config_local.py`:
+The configuration file `config.json`:
 - Is automatically created on first run if it doesn't exist (you must run the bot once to generate it)
 - Is excluded from git (via `.gitignore`) so it won't be overwritten by updates
 - Is located in the same directory as `main.py`
 - Can be edited at any time - changes take effect after restarting the bot
 - Contains all your sensitive tokens and custom settings in one place
 
-**First-time setup:** Run the bot once with `python3 main.py` (it will fail to start without tokens, but this creates the `config_local.py` file). Then edit the file with your tokens and restart the bot.
+**First-time setup:** Run the bot once with `python3 main.py` (it will fail to start without tokens, but this creates the `config.json` file). Then edit the file with your tokens and restart the bot.
 
 ## Updating the Bot
 
@@ -439,7 +439,7 @@ sudo systemctl status virustotal-bot.service
 
 You can set up automatic updates using a systemd timer. This will check for updates daily and restart the bot if changes are found.
 
-**Important:** Your configuration in `config_local.py` will never be overwritten by updates because it's excluded from git. The bot will continue to use your custom settings even after automatic updates.
+**Important:** Your configuration in `config.json` will never be overwritten by updates because it's excluded from git. The bot will continue to use your custom settings even after automatic updates.
 
 1. Create an update script:
 
@@ -587,10 +587,10 @@ Replace `/path/to/VirusTotal-Discord-Bot` with the actual path where you install
 
 ### Important Notes
 
-- Your configuration in `config_local.py` is automatically protected from being overwritten by updates. This file is excluded from git via `.gitignore`, so your tokens and settings will always be preserved.
+- Your configuration in `config.json` is automatically protected from being overwritten by updates. This file is excluded from git via `.gitignore`, so your tokens and settings will always be preserved.
 - Auto-updates will restart the bot automatically, which may cause brief downtime during the update process.
 - If you make custom modifications to `main.py` (beyond configuration), those changes will be overwritten by updates. Consider using git branches or forks if you need to maintain custom code changes.
-- The update script only updates code files, not your `config_local.py` file, so your configuration is always safe.
+- The update script only updates code files, not your `config.json` file, so your configuration is always safe.
 
 ## Uninstalling the Bot
 
