@@ -3,15 +3,12 @@
 import json
 import discord
 import re
-from datetime import datetime
-from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
+import io
+import asyncio
+from datetime import datetime, timedelta
+import hashlib
 import os
 import sys
-
-#--------------------------------------------------------------------
-# Setup
-#--------------------------------------------------------------------
-
 
 def get_app_folder() -> str:
     """
@@ -122,54 +119,34 @@ def ensure_json_valid(filepath: str, default_content: dict) -> None:
     except Exception as e:
         print(f"Error validating JSON file {filepath}: {e}")
 
+def has_link(message: str) -> bool:
+    return bool(REGEX.search(message))
+
+
+def build_param_index(tracker_map):
+    index = {}
+    for company, params in tracker_map.items():
+        for param in params:
+            index[param] = company
+    return index
+
 APP_FOLDER = get_app_folder()
 CONFIG_PATH = os.path.join(APP_FOLDER, 'config.json')
-TRACKERS_PATH = os.path.join(APP_FOLDER, 'trackers.json')
 
 default_config = {
     "bot_token": "",
     "mention_reply_author": True,
-    "require_links": True,
     "regex_keys": "(?i)\\b((?:https?://|www\\.)[^\\s<>\"']+|(?:[a-z0-9-]+\\.)+[a-z]{2,}(?:/[^\\s<>\"']*)?)\\b"
-}
-
-default_trackers = {
-    "Google": ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_id", "gclid", "gclsrc", "dclid", "wbraid", "gbraid", "gad_source"],
-    "Meta": ["fbclid", "fb_action_ids", "fb_action_types", "fb_source", "fb_ref", "fb_ad_id", "fb_adset_id", "fb_campaign_id"],
-    "TikTok": ["ttclid", "tt_content_id", "tt_medium", "tt_campaign_id", "tt_ad_id", "tt_adset_id"],
-    "Microsoft": ["msclkid", "li_fat_id", "li_source", "li_medium", "li_campaign"],
-    "Twitter": ["twclid", "ref_src", "s", "t", "tw_campaign", "tw_source"],
-    "Reddit": ["rdt_cid", "rdt_source", "rdt_medium", "rdt_campaign"],
-    "Snapchat": ["sc_cid", "sc_source", "sc_medium", "sc_campaign"],
-    "Pinterest": ["epik", "pin_campaign", "pin_source"],
-    "Amazon": ["tag", "ascsubtag", "asc_source", "creative", "creativeASIN", "linkCode", "th"],
-    "Mailchimp": ["mc_cid", "mc_eid"],
-    "HubSpot": ["hsa_acc", "hsa_cam", "hsa_grp", "hsa_ad", "hsa_src", "hsa_net", "hsa_ver"],
-    "Adobe": ["s_cid", "ef_id"],
-    "Salesforce": ["pi_campaign_id", "pi_source", "pi_ad_id"],
-    "Shopify": ["shopify", "shopify_app", "shopify_email", "shopify_utm"],
-    "Email": ["mkt_tok", "_hsenc", "_hsmi", "trk", "trkCampaign", "campaign", "source"],
-    "Affiliate": ["aff_id", "affiliate_id", "ref", "ref_id", "referrer", "partner", "partner_id", "click_id", "clickid", "cid", "subid", "sub_id"],
-    "Analytics": ["_ga", "_gl", "_gac", "_gid", "yclid", "rb_clickid", "vero_id", "vero_conv", "oly_anon_id", "oly_enc_id", "appSharePlatform"]
 }
 
 ensure_file_exists(CONFIG_PATH, default_config)
 ensure_json_valid(CONFIG_PATH, default_config)
-ensure_file_exists(TRACKERS_PATH, default_trackers)
-ensure_json_valid(TRACKERS_PATH, default_trackers)
 
 with open(CONFIG_PATH, 'r', encoding="utf-8") as f:
     config = json.load(f)
 
-with open(TRACKERS_PATH, 'r', encoding="utf-8") as f:
-    trackers = json.load(f)
-
-
 bot_token = config.get("bot_token", default_config["bot_token"])
 mention_reply_author = config.get("mention_reply_author", default_config["mention_reply_author"])
-require_links = config.get("require_links", default_config["require_links"])
-
-PARAM_INDEX = {param.lower(): company for company, params in trackers.items() for param in params}
 
 try:
     REGEX = re.compile(
@@ -179,117 +156,21 @@ except re.error as e:
     raise RuntimeError(f"Invalid regex in config.json: {e}")
 
 
-#--------------------------------------------------------------------
-# Funcs
-#--------------------------------------------------------------------
-
-def has_link(message: str) -> bool:
-    return bool(REGEX.search(message))
-
-def has_trackers(url):
-    parsed = urlparse(url)
-    for key, _ in parse_qsl(parsed.query, keep_blank_values=True):
-        if key.lower() in PARAM_INDEX:
-            return True
-    return False
-
-def build_param_index(tracker_map):
-    index = {}
-    for company, params in tracker_map.items():
-        for param in params:
-            index[param] = company
-    return index
-
-def clean_url(url):
-    parsed = urlparse(url)
-    kept = []
-    removed = {}
-
-    for key, value in parse_qsl(parsed.query, keep_blank_values=True):
-        owner = PARAM_INDEX.get(key.lower())
-        if owner:
-            removed.setdefault(owner, []).append(key)
-        else:
-            kept.append((key, value))
-
-    cleaned_url = urlunparse((
-        parsed.scheme,
-        parsed.netloc,
-        parsed.path,
-        parsed.params,
-        urlencode(kept),
-        parsed.fragment
-    ))
-
-    if removed:
-        message = f"Removed trackers from {', '.join(removed.keys())}"
-    else:
-        message = "No trackers found"
-
-    return {
-        "clean_url": cleaned_url,
-        "removed_trackers": removed,
-        "message": message
-    }
-
-def format_companies(companies):
-    """Return a nicely formatted string with commas and 'and' before the last item."""
-    companies = list(companies)  # ensure it's a list
-    if len(companies) == 0:
-        return ""
-    elif len(companies) == 1:
-        return companies[0]
-    else:
-        return ", ".join(companies[:-1]) + f", and {companies[-1]}"
-#--------------------------------------------------------------------
-# Main Program
-#--------------------------------------------------------------------
-
 class DiscordClient(discord.Client):
     async def on_ready(self):
         print(f'Logged in as {self.user}!')
 
     async def on_message(self, message):
         if message.author == self.user:
-            return  
-
-        if not (has_link(message.content) and require_links):
-            return  
-
-        urls = re.findall(REGEX, message.content)
-        if not urls:
             return
+        
+        if not (has_link(message.content)):
+            return
+        
+        await message.reply("link detected", mention_author=mention_reply_author)
+        
 
-        detected_companies = set()
-        sanitized_map = {}  
-
-        for url in urls:
-            result = clean_url(url)
-            if result["removed_trackers"]:
-                detected_companies.update(result["removed_trackers"].keys())
-                sanitized_map[url] = result["clean_url"]
-
-        if detected_companies:
-            try:
-                reply = await message.reply(">>>")
-                await message.delete()
-                sanitized_message = message.content
-                for original, cleaned in sanitized_map.items():
-                    sanitized_message = sanitized_message.replace(original, cleaned)
-
-                notice = (
-                    f"{message.author.mention} Your message has been reposted without trackers from "
-                    f"{format_companies(detected_companies)}:"
-                )
-
-                await reply.edit(content=f"{notice}\n{sanitized_message}")
-            
-            
-
-            except discord.Forbidden:
-                print("Bot lacks permission to delete messages.")
-            except Exception as e:
-                print(f"Error handling message: {e}")
+        
 
 
 
