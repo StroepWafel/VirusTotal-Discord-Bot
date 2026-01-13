@@ -4,51 +4,40 @@ A Discord bot that automatically scans file attachments using VirusTotal's API t
 
 ## Table of Contents
 
-- [VirusTotal Discord Bot](#virustotal-discord-bot)
-  - [Table of Contents](#table-of-contents)
-  - [Features](#features)
-  - [Demo:](#demo)
-  - [Prerequisites](#prerequisites)
-  - [Creating a Discord Bot](#creating-a-discord-bot)
-    - [Step 1: Create a Discord Application](#step-1-create-a-discord-application)
-    - [Step 2: Create a Bot](#step-2-create-a-bot)
-    - [Step 3: Set Bot Permissions](#step-3-set-bot-permissions)
-    - [Step 4: Invite Bot to Your Server](#step-4-invite-bot-to-your-server)
-  - [Getting a VirusTotal API Key](#getting-a-virustotal-api-key)
-  - [Hosting on Ubuntu Server](#hosting-on-ubuntu-server)
-    - [Step 1: Update System Packages](#step-1-update-system-packages)
-    - [Step 2: Install Python and pip](#step-2-install-python-and-pip)
-    - [Step 3: Clone or Upload the Bot Files](#step-3-clone-or-upload-the-bot-files)
-    - [Step 4: Create a Virtual Environment](#step-4-create-a-virtual-environment)
-    - [Step 5: Install Dependencies](#step-5-install-dependencies)
-    - [Step 6: Configure the Bot](#step-6-configure-the-bot)
-    - [Step 7: Test the Bot](#step-7-test-the-bot)
-    - [Step 8: Create a Systemd Service (Recommended)](#step-8-create-a-systemd-service-recommended)
-    - [Step 9: Firewall Configuration (if applicable)](#step-9-firewall-configuration-if-applicable)
-  - [Usage](#usage)
-  - [Configuration Options](#configuration-options)
-    - [Required Configuration](#required-configuration)
-    - [Bot Behavior Settings](#bot-behavior-settings)
-    - [Message Templates](#message-templates)
-    - [Configuration File Details](#configuration-file-details)
-  - [Updating the Bot](#updating-the-bot)
-    - [Manual Update](#manual-update)
-    - [Automatic Updates (Optional)](#automatic-updates-optional)
-    - [Alternative: Cron Job for Auto-Updates](#alternative-cron-job-for-auto-updates)
-    - [Important Notes](#important-notes)
-  - [Uninstalling the Bot](#uninstalling-the-bot)
-    - [Step 1: Stop and Disable the Systemd Service](#step-1-stop-and-disable-the-systemd-service)
-    - [Step 2: Remove the Systemd Service File](#step-2-remove-the-systemd-service-file)
-    - [Step 3: Remove the Bot Files](#step-3-remove-the-bot-files)
-    - [Step 4: Remove Bot from Discord Server (Optional)](#step-4-remove-bot-from-discord-server-optional)
-    - [Note](#note)
-  - [Troubleshooting](#troubleshooting)
-    - [Bot doesn't respond to file attachments](#bot-doesnt-respond-to-file-attachments)
-    - [Bot crashes or stops running](#bot-crashes-or-stops-running)
-    - [Permission errors](#permission-errors)
-  - [Security Notes](#security-notes)
-  - [License](#license)
-  - [ToDo](#todo)
+- [Features](#features)
+- [Demo](#demo)
+- [Prerequisites](#prerequisites)
+- [Creating a Discord Bot](#creating-a-discord-bot)
+  - [Step 1: Create a Discord Application](#step-1-create-a-discord-application)
+  - [Step 2: Create a Bot](#step-2-create-a-bot)
+  - [Step 3: Set Bot Permissions](#step-3-set-bot-permissions)
+  - [Step 4: Invite Bot to Your Server](#step-4-invite-bot-to-your-server)
+- [Getting a VirusTotal API Key](#getting-a-virustotal-api-key)
+- [Hosting on Ubuntu Server](#hosting-on-ubuntu-server)
+  - [Step 1: Update System Packages](#step-1-update-system-packages)
+  - [Step 2: Install Python and pip](#step-2-install-python-and-pip)
+  - [Step 3: Clone or Upload the Bot Files](#step-3-clone-or-upload-the-bot-files)
+  - [Step 4: Create a Virtual Environment](#step-4-create-a-virtual-environment)
+  - [Step 5: Install Dependencies](#step-5-install-dependencies)
+  - [Step 6: Configure the Bot](#step-6-configure-the-bot)
+  - [Step 7: Test the Bot](#step-7-test-the-bot)
+  - [Step 8: Create a Systemd Service (Recommended)](#step-8-create-a-systemd-service-recommended)
+  - [Step 9: Firewall Configuration (if applicable)](#step-9-firewall-configuration-if-applicable)
+- [Usage](#usage)
+- [Configuration Options](#configuration-options)
+  - [Required Configuration](#required-configuration)
+  - [Bot Behavior Settings](#bot-behavior-settings)
+  - [Message Templates](#message-templates)
+  - [Configuration File Details](#configuration-file-details)
+- [Updating the Bot](#updating-the-bot)
+  - [Manual Update](#manual-update)
+  - [Automatic Updates (Optional)](#automatic-updates-optional)
+  - [Alternative: Cron Job for Auto-Updates](#alternative-cron-job-for-auto-updates)
+  - [Important Notes](#important-notes)
+- [Uninstalling the Bot](#uninstalling-the-bot)
+- [Troubleshooting](#troubleshooting)
+- [Security Notes](#security-notes)
+- [License](#license)
 
 ## Features
 
@@ -97,11 +86,10 @@ Before you begin, you'll need:
 - View Channels
 - Send Messages
 - Send Messages in Threads
-- Manage Messages
 - Embed links
 - Read Message History
 - Add reactions
-1. Copy the generated URL at the bottom of the page
+5. Copy the generated URL at the bottom of the page
 
 ### Step 4: Invite Bot to Your Server
 
