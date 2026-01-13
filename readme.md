@@ -1,20 +1,18 @@
-# VirusTotal Discord Bot
+# Discord Link Cleaner Bot
 
-A Discord bot that automatically scans file attachments using VirusTotal's API to help keep your server safe from malicious files.
+A Discord bot that automatically removes tracking parameters from URLs in messages to help protect user privacy. The bot detects URLs with tracking parameters (like `utm_source`, `fbclid`, `gclid`, etc.) and reposts the message with cleaned URLs.
 
 ## Table of Contents
 
-- [VirusTotal Discord Bot](#virustotal-discord-bot)
+- [Discord Link Cleaner Bot](#discord-link-cleaner-bot)
   - [Table of Contents](#table-of-contents)
   - [Features](#features)
-  - [Demo:](#demo)
   - [Prerequisites](#prerequisites)
   - [Creating a Discord Bot](#creating-a-discord-bot)
     - [Step 1: Create a Discord Application](#step-1-create-a-discord-application)
     - [Step 2: Create a Bot](#step-2-create-a-bot)
     - [Step 3: Set Bot Permissions](#step-3-set-bot-permissions)
     - [Step 4: Invite Bot to Your Server](#step-4-invite-bot-to-your-server)
-  - [Getting a VirusTotal API Key](#getting-a-virustotal-api-key)
   - [Hosting on Ubuntu Server](#hosting-on-ubuntu-server)
     - [Step 1: Update System Packages](#step-1-update-system-packages)
     - [Step 2: Install Python and pip](#step-2-install-python-and-pip)
@@ -24,48 +22,32 @@ A Discord bot that automatically scans file attachments using VirusTotal's API t
     - [Step 6: Configure the Bot](#step-6-configure-the-bot)
     - [Step 7: Test the Bot](#step-7-test-the-bot)
     - [Step 8: Create a Systemd Service (Recommended)](#step-8-create-a-systemd-service-recommended)
-    - [Step 9: Firewall Configuration (if applicable)](#step-9-firewall-configuration-if-applicable)
   - [Usage](#usage)
   - [Configuration Options](#configuration-options)
     - [Required Configuration](#required-configuration)
     - [Bot Behavior Settings](#bot-behavior-settings)
-    - [Message Templates](#message-templates)
-    - [Configuration File Details](#configuration-file-details)
+    - [Tracker Configuration](#tracker-configuration)
   - [Updating the Bot](#updating-the-bot)
     - [Manual Update](#manual-update)
-    - [Automatic Updates (Optional)](#automatic-updates-optional)
-    - [Alternative: Cron Job for Auto-Updates](#alternative-cron-job-for-auto-updates)
-    - [Important Notes](#important-notes)
   - [Uninstalling the Bot](#uninstalling-the-bot)
-    - [Step 1: Stop and Disable the Systemd Service](#step-1-stop-and-disable-the-systemd-service)
-    - [Step 2: Remove the Systemd Service File](#step-2-remove-the-systemd-service-file)
-    - [Step 3: Remove the Bot Files](#step-3-remove-the-bot-files)
-    - [Step 4: Remove Bot from Discord Server (Optional)](#step-4-remove-bot-from-discord-server-optional)
-    - [Note](#note)
   - [Troubleshooting](#troubleshooting)
-    - [Bot doesn't respond to file attachments](#bot-doesnt-respond-to-file-attachments)
-    - [Bot crashes or stops running](#bot-crashes-or-stops-running)
-    - [Permission errors](#permission-errors)
   - [Security Notes](#security-notes)
   - [License](#license)
-  - [ToDo](#todo)
 
 ## Features
 
-- Automatically scans file attachments posted in Discord channels
-- Supports multiple file attachments in a single message
-- Provides real-time scan results with links to detailed VirusTotal reports
-- Handles large files and timeouts gracefully
-
-## Demo:
-https://discord.gg/BPRdkATNB6
+- Automatically detects URLs in Discord messages
+- Removes tracking parameters from URLs (Google Analytics, Facebook, TikTok, Twitter, Reddit, and many more)
+- Deletes the original message and reposts it with cleaned URLs
+- Configurable tracker list via `trackers.json`
+- Supports custom regex patterns for URL detection
+- Optional requirement for messages to contain links before processing
 
 ## Prerequisites
 
 Before you begin, you'll need:
 
 - A Discord application and bot token
-- A VirusTotal API key (sign up at https://www.virustotal.com/gui/join-us)
 - An Ubuntu server (or any Linux system with Python 3.7+)
 - Basic knowledge of Linux command line
 
@@ -82,7 +64,7 @@ Before you begin, you'll need:
 1. In your application, go to the "Bot" section in the left sidebar
 2. Click "Add Bot" and confirm
 3. Under "Privileged Gateway Intents", enable "Message Content Intent"
-   - This is required for the bot to read message content and attachments
+   - This is required for the bot to read message content and detect URLs
 4. Copy the bot token (you'll need this later)
    - Keep this token secret! Never share it publicly
 
@@ -93,15 +75,12 @@ Before you begin, you'll need:
 3. Under "Scopes", check:
    - `bot`
 4. Under "Bot Permissions", check the following:
-- Change nickname
-- View Channels
-- Send Messages
-- Send Messages in Threads
-- Manage Messages
-- Embed links
-- Read Message History
-- Add reactions
-1. Copy the generated URL at the bottom of the page
+   - View Channels
+   - Send Messages
+   - Send Messages in Threads
+   - Manage Messages
+   - Read Message History
+5. Copy the generated URL at the bottom of the page
 
 ### Step 4: Invite Bot to Your Server
 
@@ -109,13 +88,6 @@ Before you begin, you'll need:
 2. Select the server where you want to add the bot
 3. Authorize the bot with the permissions you selected
 4. The bot should now appear in your server (though it won't be online until you run it)
-
-## Getting a VirusTotal API Key
-
-1. Go to https://www.virustotal.com/gui/join-us
-2. Sign up for a free account
-3. Once logged in, go to your API key settings
-4. Copy your API key (you'll need this later)
 
 ## Hosting on Ubuntu Server
 
@@ -137,15 +109,15 @@ sudo apt install python3 python3-pip python3-venv -y
 If you're using Git:
 
 ```bash
-git clone https://github.com/StroepWafel/VirusTotal-Discord-Bot
-cd VirusTotal-Discord-Bot
+git clone https://github.com/your-username/Discord-Link-Cleaner
+cd Discord-Link-Cleaner
 ```
 
 Alternatively, you can upload the files using SCP, SFTP, or any file transfer method:
 
 ```bash
 # Example using SCP from your local machine
-scp -r VirusTotal-Discord-Bot user@your-server-ip:/path/to/destination
+scp -r Discord-Link-Cleaner user@your-server-ip:/path/to/destination
 ```
 
 ### Step 4: Create a Virtual Environment
@@ -162,6 +134,8 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+**Note:** The bot only requires `discord.py`. You can simplify `requirements.txt` to just contain `discord.py` if desired.
+
 ### Step 6: Configure the Bot
 
 The bot uses an external configuration file (`config.json`) to store your settings. This file is not tracked by git and will not be overwritten during updates, keeping your configuration safe.
@@ -174,7 +148,7 @@ The bot uses an external configuration file (`config.json`) to store your settin
 python3 main.py
 ```
 
-The bot will fail to start (since tokens aren't set yet), but it will create `config.json` with default values. You should see a message like: "Created config.json - please edit it with your bot token and VirusTotal API key"
+The bot will fail to start (since tokens aren't set yet), but it will create `config.json` with default values. You should see a message like: "Created missing file: config.json"
 
 Press Ctrl+C to stop the bot.
 
@@ -184,56 +158,22 @@ Press Ctrl+C to stop the bot.
 nano config.json
 ```
 
-The file will already exist with default values in JSON format. You just need to add your credentials. Find the `"bot_token"` and `"virustotal_api_key"` fields and replace the empty strings with your actual tokens:
+The file will already exist with default values in JSON format. You just need to add your bot token. Find the `"bot_token"` field and replace the empty string with your actual token:
 
 ```json
 {
     "bot_token": "YOUR_DISCORD_BOT_TOKEN_HERE",
-    "virustotal_api_key": "YOUR_VIRUSTOTAL_API_KEY_HERE"
+    "mention_reply_author": true,
+    "require_links": true,
+    "regex_keys": "(?i)\\b((?:https?://|www\\.)[^\\s<>\"']+|(?:[a-z0-9-]+\\.)+[a-z]{2,}(?:/[^\\s<>\"']*)?)\\b"
 }
 ```
 
-The full configuration file structure looks like this:
-
-```json
-{
-    "bot_token": "",
-    "virustotal_api_key": "",
-    "mention_reply_author": false,
-    "timeout_seconds": 300,
-    "max_attempts": 2,
-    "file_recieved_message": "Attachment `{filename}` received. Submitting for scanning...",
-    "file_too_large_warning": "Attachment `{filename}` is too large ({file_size} bytes). Maximum allowed size is 1 GB. Proceed with caution",
-    "download_error_warning": "Attachment `{filename}` could not be downloaded. Please proceed with caution.",
-    "file_submitted_for_scanning_message": "Attachment `{filename}` has been submitted for scanning. Analysis ID: {analysis_id}",
-    "file_scanning_error_message": "Error scanning `{filename}`: {e}",
-    "results_recieved_message": "Scan completed for `{filename}`. \n {malicious_count}/{total_engines} vendors marked this file as malicious. \n More details can be found here: {results_url}",
-    "scan_timeout_message": "Scan for `{filename}` timed out after waiting for {timeout} seconds. \n You might still be able to check the results here: {results_url}",
-    "ignored_filetypes": [
-        ".txt",
-        ".md",
-        ".json",
-        ".xml",
-        ".csv",
-        ".log",
-        ".ini",
-        ".cfg",
-        ".conf",
-        ".yaml",
-        ".yml",
-        ".png",
-        ".webp",
-        ".jpeg",
-        ".jpg"
-    ]
-}
-```
-
-3. Replace `YOUR_DISCORD_BOT_TOKEN_HERE` and `YOUR_VIRUSTOTAL_API_KEY_HERE` with your actual tokens. You can customize any of the other settings as needed.
+3. Replace `YOUR_DISCORD_BOT_TOKEN_HERE` with your actual bot token. You can customize any of the other settings as needed (see [Configuration Options](#configuration-options) below).
 
 4. Save the file (Ctrl+X, then Y, then Enter if using nano).
 
-**Important:** The `config.json` file is excluded from git (via `.gitignore`), so your tokens and configuration will never be overwritten by updates. The bot automatically creates this file on first run, making setup easier. Simply run the bot once, then edit the generated file with your credentials.
+**Important:** The `config.json` file is excluded from git (via `.gitignore`), so your tokens and configuration will never be overwritten by updates. The bot automatically creates this file on first run, making setup easier.
 
 ### Step 7: Test the Bot
 
@@ -243,14 +183,9 @@ Run the bot manually to ensure everything works:
 python3 main.py
 ```
 
-You should see "Logged in as [Bot Name]!" if everything is configured correctly. 
+You should see "Logged in as [Bot Name]!" if everything is configured correctly.
 
-Upload a file to the server the bot is in to check everything is working, you should eventually see a message similar to:
-```bash
-Scan completed for <filename>. 
-X/Y vendors marked this file as malicious. 
-More details can be found here: https://www.virustotal.com/gui/file/<SHA256>/detection 
-```
+Post a message with a URL containing tracking parameters (e.g., `https://example.com/page?utm_source=test&fbclid=123`) to check everything is working. The bot should delete your message and repost it with the tracking parameters removed.
 
 Press Ctrl+C to stop the bot.
 
@@ -261,22 +196,22 @@ To keep the bot running in the background and automatically restart it if it cra
 1. Create the service file:
 
 ```bash
-sudo nano /etc/systemd/system/virustotal-bot.service
+sudo nano /etc/systemd/system/discord-link-cleaner.service
 ```
 
 2. Add the following content (adjust paths as needed):
 
 ```ini
 [Unit]
-Description=VirusTotal Discord Bot
+Description=Discord Link Cleaner Bot
 After=network.target
 
 [Service]
 Type=simple
 User=your-username
-WorkingDirectory=/path/to/VirusTotal-Discord-Bot
-Environment="PATH=/path/to/VirusTotal-Discord-Bot/venv/bin"
-ExecStart=/path/to/VirusTotal-Discord-Bot/venv/bin/python3 /path/to/VirusTotal-Discord-Bot/main.py
+WorkingDirectory=/path/to/Discord-Link-Cleaner
+Environment="PATH=/path/to/Discord-Link-Cleaner/venv/bin"
+ExecStart=/path/to/Discord-Link-Cleaner/venv/bin/python3 /path/to/Discord-Link-Cleaner/main.py
 Restart=always
 RestartSec=10
 
@@ -286,7 +221,7 @@ WantedBy=multi-user.target
 
 Replace:
 - `your-username` with your Ubuntu username
-- `/path/to/VirusTotal-Discord-Bot` with the actual path to your bot directory (for me this was `/root/VirusTotal-Discord-Bot`)
+- `/path/to/Discord-Link-Cleaner` with the actual path to your bot directory
 
 Save the file (Ctrl+X, then Y, then Enter if using nano).
 
@@ -294,31 +229,20 @@ Save the file (Ctrl+X, then Y, then Enter if using nano).
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable virustotal-bot.service
-sudo systemctl start virustotal-bot.service
+sudo systemctl enable discord-link-cleaner.service
+sudo systemctl start discord-link-cleaner.service
 ```
 
 4. Check the status:
 
 ```bash
-sudo systemctl status virustotal-bot.service
+sudo systemctl status discord-link-cleaner.service
 ```
 
 5. View logs if needed:
 
 ```bash
-sudo journalctl -u virustotal-bot.service -f
-```
-
-### Step 9: Firewall Configuration (if applicable)
-
-If you have a firewall enabled, make sure it's not blocking outbound connections (the bot needs to connect to Discord and VirusTotal APIs):
-
-```bash
-# Check firewall status
-sudo ufw status
-
-# If firewall is active, ensure outbound connections are allowed (usually enabled by default)
+sudo journalctl -u discord-link-cleaner.service -f
 ```
 
 ## Usage
@@ -326,15 +250,16 @@ sudo ufw status
 Once the bot is running, it will automatically:
 
 1. Monitor all channels where it has access
-2. Detect file attachments in messages
-3. Download and scan files using VirusTotal
-4. Reply to the message with scan results
+2. Detect URLs in messages
+3. Check if URLs contain tracking parameters
+4. If trackers are found, delete the original message and repost it with cleaned URLs
+5. Include a notice indicating which companies' trackers were removed
 
-The bot will reply with:
-- A confirmation when a file is received
-- Scan progress updates
-- Final results showing how many antivirus engines detected the file as malicious
-- A link to the full VirusTotal report
+The bot will only process messages that contain URLs (if `require_links` is set to `true` in the config).
+
+**Example:**
+- Original message: `Check this out: https://example.com/page?utm_source=test&fbclid=123`
+- Bot reposts: `@user Your message has been reposted without trackers from Google, and Meta: Check this out: https://example.com/page`
 
 ## Configuration Options
 
@@ -350,92 +275,73 @@ You can customize the bot behavior by editing the variables in your `config.json
 - This is required for the bot to connect to Discord
 - Example in `config.json`: `"bot_token": "YOUR_DISCORD_BOT_TOKEN_HERE"`
 
-**`virustotal_api_key`** (string, required)
-- Your VirusTotal API key for scanning files
-- Sign up and get your API key at: https://www.virustotal.com/gui/join-us
-- This is required for the bot to scan files
-- Example in `config.json`: `"virustotal_api_key": "YOUR_VIRUSTOTAL_API_KEY_HERE"`
-
 ### Bot Behavior Settings
 
-**`mention_reply_author`** (boolean, default: `false`)
-- Whether to mention (ping) the original message author when replying with scan results
-- Set to `true` to ping the user who uploaded the file
-- Set to `false` to reply without mentioning (recommended for busy servers)
-- Example in `config.json`: `"mention_reply_author": true`
+**`mention_reply_author`** (boolean, default: `true`)
+- Whether to mention (ping) the original message author when reposting with cleaned URLs
+- Set to `true` to ping the user who posted the message
+- Set to `false` to repost without mentioning (recommended for busy servers)
+- Example in `config.json`: `"mention_reply_author": false`
 
-**`timeout_seconds`** (integer, default: `300`)
-- How long to wait (in seconds) for VirusTotal scan results before timing out
-- Default is 300 seconds (5 minutes)
-- Increase this value if you want to wait longer for scan results (e.g., for large files)
-- Decrease this value if you want faster responses (may result in more timeouts)
-- Example in `config.json`: `"timeout_seconds": 600`
+**`require_links`** (boolean, default: `true`)
+- Whether the bot should only process messages that contain URLs
+- Set to `true` to only process messages with links (recommended)
+- Set to `false` to process all messages (not recommended, as the bot will check every message)
+- Example in `config.json`: `"require_links": true`
 
-**`max_attempts`** (integer, default: `2`)
-- Maximum number of retry attempts when checking for scan results if an error occurs
-- If VirusTotal API returns an error, the bot will retry this many times before giving up
-- Increase for better reliability (e.g., `3` or `4`)
-- Decrease for faster failure notifications
-- Example in `config.json`: `"max_attempts": 3`
+**`regex_keys`** (string, default: `"(?i)\\b((?:https?://|www\\.)[^\\s<>\"']+|(?:[a-z0-9-]+\\.)+[a-z]{2,}(?:/[^\\s<>\"']*)?)\\b"`)
+- Regular expression pattern used to detect URLs in messages
+- The default pattern matches HTTP/HTTPS URLs and domain names
+- Only modify if you understand regex patterns and need custom URL detection
+- Example in `config.json`: `"regex_keys": "(?i)\\b((?:https?://|www\\.)[^\\s<>\"']+|(?:[a-z0-9-]+\\.)+[a-z]{2,}(?:/[^\\s<>\"']*)?)\\b"`
 
-**`ignored_filetypes`** (array, default: `[".txt", ".md", ".json", ".xml", ".csv", ".log", ".ini", ".cfg", ".conf", ".yaml", ".yml", ".png", ".webp", ".jpeg", ".jpg"]`)
-- Array of file extensions (with leading dot) that the bot should ignore and not scan
-- Files with these extensions will be silently ignored to reduce unnecessary scans
-- Add or remove file extensions as needed for your server
-- Example in `config.json`: `"ignored_filetypes": [".txt", ".md", ".png", ".jpg", ".gif", ".webp"]`
-- To scan all files, use an empty array: `"ignored_filetypes": []`
+### Tracker Configuration
 
-### Message Templates
+The bot uses `trackers.json` to define which URL parameters should be removed. This file is automatically created on first run with a comprehensive list of tracking parameters from major companies:
 
-You can customize all the messages the bot sends. Use placeholders like `{filename}`, `{file_size}`, `{analysis_id}`, `{malicious_count}`, `{total_engines}`, `{results_url}`, `{timeout}`, and `{e}` as placeholders that will be replaced with actual values.
+- **Google**: utm_source, utm_medium, utm_campaign, gclid, etc.
+- **Meta (Facebook)**: fbclid, fb_action_ids, fb_source, etc.
+- **TikTok**: ttclid, tt_content_id, etc.
+- **Microsoft**: msclkid, li_fat_id, etc.
+- **Twitter**: twclid, ref_src, etc.
+- **Reddit**: rdt_cid, rdt_source, etc.
+- **Snapchat**: sc_cid, sc_source, etc.
+- **Pinterest**: epik, pin_campaign, etc.
+- **Amazon**: tag, ascsubtag, etc.
+- **Mailchimp**: mc_cid, mc_eid
+- **HubSpot**: hsa_acc, hsa_cam, etc.
+- **Adobe**: s_cid, ef_id
+- **Salesforce**: pi_campaign_id, pi_source, etc.
+- **Shopify**: shopify, shopify_app, etc.
+- **Email**: mkt_tok, _hsenc, etc.
+- **Affiliate**: aff_id, affiliate_id, ref, etc.
+- **Analytics**: _ga, _gl, _gid, etc.
 
-**`file_recieved_message`** (string)
-- Message sent when a file attachment is first received
-- Available placeholders: `{filename}`
-- Example in `config.json`: `"file_recieved_message": "Attachment `{filename}` received. Submitting for scanning..."`
+You can customize `trackers.json` to add or remove tracking parameters as needed. The file structure is:
 
-**`file_too_large_warning`** (string)
-- Message sent when a file is too large to scan (over 1 GB)
-- Available placeholders: `{filename}`, `{file_size}`
-- Example in `config.json`: `"file_too_large_warning": "Attachment `{filename}` is too large ({file_size} bytes). Maximum allowed size is 1 GB. Proceed with caution"`
+```json
+{
+    "CompanyName": ["param1", "param2", "param3"],
+    "AnotherCompany": ["param4", "param5"]
+}
+```
 
-**`download_error_warning`** (string)
-- Message sent when the bot cannot download the file attachment from Discord
-- Available placeholders: `{filename}`
-- Example in `config.json`: `"download_error_warning": "Attachment `{filename}` could not be downloaded. Please proceed with caution."`
-
-**`file_submitted_for_scanning_message`** (string)
-- Message sent when a file has been successfully submitted to VirusTotal for scanning
-- Available placeholders: `{filename}`, `{analysis_id}`
-- Example in `config.json`: `"file_submitted_for_scanning_message": "Attachment `{filename}` has been submitted for scanning. Analysis ID: {analysis_id}"`
-
-**`file_scanning_error_message`** (string)
-- Message sent when an error occurs during the scanning process
-- Available placeholders: `{filename}`, `{e}` (error message)
-- Example in `config.json`: `"file_scanning_error_message": "Error scanning `{filename}`: {e}"`
-
-**`results_recieved_message`** (string)
-- Message sent when scan results are received from VirusTotal
-- Available placeholders: `{filename}`, `{malicious_count}`, `{total_engines}`, `{results_url}`
-- Use `\n` for new lines in the message
-- Example in `config.json`: `"results_recieved_message": "Scan completed for `{filename}`. \n {malicious_count}/{total_engines} vendors marked this file as malicious. \n More details can be found here: {results_url}"`
-
-**`scan_timeout_message`** (string)
-- Message sent when the scan times out before completion
-- Available placeholders: `{filename}`, `{timeout}`, `{results_url}`
-- Use `\n` for new lines in the message
-- Example in `config.json`: `"scan_timeout_message": "Scan for `{filename}` timed out after waiting for {timeout} seconds. \n You might still be able to check the results here: {results_url}"`
+**Note:** The bot automatically validates and cleans `trackers.json` on startup, ensuring it matches the expected structure. If you add invalid entries, they may be removed.
 
 ### Configuration File Details
 
-The configuration file `config.json`:
-- Is automatically created on first run if it doesn't exist (you must run the bot once to generate it)
-- Is excluded from git (via `.gitignore`) so it won't be overwritten by updates
-- Is located in the same directory as `main.py`
-- Can be edited at any time - changes take effect after restarting the bot
-- Contains all your sensitive tokens and custom settings in one place
+The configuration files:
+- `config.json`: Contains bot token and behavior settings
+- `trackers.json`: Contains the list of tracking parameters to remove
 
-**First-time setup:** Run the bot once with `python3 main.py` (it will fail to start without tokens, but this creates the `config.json` file). Then edit the file with your tokens and restart the bot.
+Both files:
+- Are automatically created on first run if they don't exist
+- Are excluded from git (via `.gitignore`) so they won't be overwritten by updates
+- Are located in the same directory as `main.py`
+- Can be edited at any time - changes take effect after restarting the bot
+- Are automatically validated and cleaned on startup
+
+**First-time setup:** Run the bot once with `python3 main.py` (it will fail to start without tokens, but this creates the config files). Then edit `config.json` with your bot token and restart the bot.
 
 ## Updating the Bot
 
@@ -446,16 +352,16 @@ To update the bot to the latest version:
 1. Stop the bot service:
 
 ```bash
-sudo systemctl stop virustotal-bot.service
+sudo systemctl stop discord-link-cleaner.service
 ```
 
 2. Navigate to the bot directory:
 
 ```bash
-cd /path/to/VirusTotal-Discord-Bot
+cd /path/to/Discord-Link-Cleaner
 ```
 
-Replace `/path/to/VirusTotal-Discord-Bot` with the actual path where you installed the bot.
+Replace `/path/to/Discord-Link-Cleaner` with the actual path where you installed the bot.
 
 3. Pull the latest changes from the repository:
 
@@ -473,171 +379,18 @@ pip install --upgrade -r requirements.txt
 5. Restart the bot service:
 
 ```bash
-sudo systemctl start virustotal-bot.service
+sudo systemctl start discord-link-cleaner.service
 ```
 
 6. Verify the bot is running:
 
 ```bash
-sudo systemctl status virustotal-bot.service
+sudo systemctl status discord-link-cleaner.service
 ```
 
-### Automatic Updates (Optional)
-
-You can set up automatic updates using a systemd timer. This will check for updates daily and restart the bot if changes are found.
-
-**Important:** Your configuration in `config.json` will never be overwritten by updates because it's excluded from git. The bot will continue to use your custom settings even after automatic updates.
-
-1. Create an update script:
-
-```bash
-nano /path/to/VirusTotal-Discord-Bot/update.sh
-```
-
-2. Add the following content:
-
-```bash
-#!/bin/bash
-
-BOT_DIR="/path/to/VirusTotal-Discord-Bot"
-SERVICE_NAME="virustotal-bot.service"
-
-cd "$BOT_DIR"
-
-# Fetch latest changes
-git fetch origin main
-
-# Check if there are any updates
-if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
-    echo "Update available. Updating bot..."
-    
-    # Stop the service
-    systemctl stop "$SERVICE_NAME"
-    
-    # Pull latest changes
-    git pull origin main
-    
-    # Update dependencies
-    source venv/bin/activate
-    pip install --upgrade -r requirements.txt
-    deactivate
-    
-    # Start the service
-    systemctl start "$SERVICE_NAME"
-    
-    echo "Bot updated and restarted successfully."
-else
-    echo "Bot is up to date."
-fi
-```
-
-Replace `/path/to/VirusTotal-Discord-Bot` with the actual path where you installed the bot.
-
-3. Make the script executable:
-
-```bash
-chmod +x /path/to/VirusTotal-Discord-Bot/update.sh
-```
-
-4. Create a systemd timer file:
-
-```bash
-sudo nano /etc/systemd/system/virustotal-bot-update.timer
-```
-
-5. Add the following content:
-
-```ini
-[Unit]
-Description=Daily update check for VirusTotal Discord Bot
-After=network.target
-
-[Timer]
-OnCalendar=daily
-RandomizedDelaySec=3600
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-```
-
-6. Create a systemd service file for the update:
-
-```bash
-sudo nano /etc/systemd/system/virustotal-bot-update.service
-```
-
-7. Add the following content:
-
-```ini
-[Unit]
-Description=Update VirusTotal Discord Bot
-After=network.target
-
-[Service]
-Type=oneshot
-User=your-username
-WorkingDirectory=/path/to/VirusTotal-Discord-Bot
-ExecStart=/path/to/VirusTotal-Discord-Bot/update.sh
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Replace:
-- `your-username` with your Ubuntu username
-- `/path/to/VirusTotal-Discord-Bot` with the actual path to your bot directory
-
-8. Enable and start the timer:
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable virustotal-bot-update.timer
-sudo systemctl start virustotal-bot-update.timer
-```
-
-9. Check the timer status:
-
-```bash
-sudo systemctl status virustotal-bot-update.timer
-```
-
-10. View when the next update check will run:
-
-```bash
-sudo systemctl list-timers virustotal-bot-update.timer
-```
-
-The timer will check for updates daily at a random time (within a 1-hour window) to avoid server load spikes. You can manually trigger an update check by running:
-
-```bash
-sudo systemctl start virustotal-bot-update.service
-```
-
-### Alternative: Cron Job for Auto-Updates
-
-If you prefer using cron instead of systemd timers, you can add a cron job:
-
-1. Edit the crontab:
-
-```bash
-crontab -e
-```
-
-2. Add the following line (runs daily at 2 AM):
-
-```bash
-0 2 * * * /path/to/VirusTotal-Discord-Bot/update.sh >> /var/log/virustotal-bot-update.log 2>&1
-```
-
-Replace `/path/to/VirusTotal-Discord-Bot` with the actual path where you installed the bot.
-
-### Important Notes
-
-- Your configuration in `config.json` is automatically protected from being overwritten by updates. This file is excluded from git via `.gitignore`, so your tokens and settings will always be preserved.
-- Auto-updates will restart the bot automatically, which may cause brief downtime during the update process.
-- If you make custom modifications to `main.py` (beyond configuration), those changes will be overwritten by updates. Consider using git branches or forks if you need to maintain custom code changes.
-- The update script only updates code files, not your `config.json` file, so your configuration is always safe.
+**Important Notes:**
+- Your configuration in `config.json` and `trackers.json` will never be overwritten by updates because they're excluded from git. The bot will continue to use your custom settings even after updates.
+- The bot automatically validates and cleans configuration files on startup, ensuring they match the expected structure.
 
 ## Uninstalling the Bot
 
@@ -648,14 +401,14 @@ If you need to remove the bot from your server, follow these steps:
 If you created a systemd service, stop and disable it:
 
 ```bash
-sudo systemctl stop virustotal-bot.service
-sudo systemctl disable virustotal-bot.service
+sudo systemctl stop discord-link-cleaner.service
+sudo systemctl disable discord-link-cleaner.service
 ```
 
 ### Step 2: Remove the Systemd Service File
 
 ```bash
-sudo rm /etc/systemd/system/virustotal-bot.service
+sudo rm /etc/systemd/system/discord-link-cleaner.service
 sudo systemctl daemon-reload
 ```
 
@@ -664,12 +417,12 @@ sudo systemctl daemon-reload
 Navigate to the bot directory and remove it:
 
 ```bash
-cd /path/to/VirusTotal-Discord-Bot
+cd /path/to/Discord-Link-Cleaner
 cd ..
-rm -rf VirusTotal-Discord-Bot
+rm -rf Discord-Link-Cleaner
 ```
 
-Replace `/path/to/VirusTotal-Discord-Bot` with the actual path where you installed the bot.
+Replace `/path/to/Discord-Link-Cleaner` with the actual path where you installed the bot.
 
 ### Step 4: Remove Bot from Discord Server (Optional)
 
@@ -686,45 +439,51 @@ Alternatively, you can revoke the bot's access in the server settings under "Int
 This will remove the bot files and service, but will not uninstall Python or pip packages that may be used by other applications on your system. If you want to remove the Python packages installed for this bot specifically, you can deactivate and remove the virtual environment before deleting the bot directory:
 
 ```bash
-cd /path/to/VirusTotal-Discord-Bot
+cd /path/to/Discord-Link-Cleaner
 source venv/bin/activate
 deactivate
 cd ..
-rm -rf VirusTotal-Discord-Bot
+rm -rf Discord-Link-Cleaner
 ```
 
 ## Troubleshooting
 
-### Bot doesn't respond to file attachments
+### Bot doesn't respond to URLs
 
 - Verify the bot is online in your Discord server
 - Check that the Message Content Intent is enabled in Discord Developer Portal
-- Ensure the bot has "View Channels" and "Read Message History" permissions
-- Check bot logs for errors: `sudo journalctl -u virustotal-bot.service -f`
+- Ensure the bot has "View Channels", "Read Message History", and "Manage Messages" permissions
+- Verify `require_links` is set appropriately in `config.json`
+- Check bot logs for errors: `sudo journalctl -u discord-link-cleaner.service -f`
 
 ### Bot crashes or stops running
 
-- Check systemd logs: `sudo journalctl -u virustotal-bot.service -n 50`
-- Verify your API keys are correct
+- Check systemd logs: `sudo journalctl -u discord-link-cleaner.service -n 50`
+- Verify your bot token is correct
 - Ensure your server has internet connectivity
 - Check if the bot token is valid and hasn't been regenerated
+- Verify the regex pattern in `config.json` is valid
 
 ### Permission errors
 
 - Make sure the bot has all required permissions in the Discord server
 - Verify the bot's role in the server has the necessary channel permissions
+- Ensure "Manage Messages" permission is granted so the bot can delete messages
+
+### Bot doesn't remove trackers
+
+- Check that `trackers.json` contains the tracking parameters you expect
+- Verify the URL format matches the regex pattern in `config.json`
+- Check bot logs to see if URLs are being detected
 
 ## Security Notes
 
-- Never commit your bot token or API keys to version control
-- Keep your bot token and API keys secure
+- Never commit your bot token to version control
+- Keep your bot token secure
 - Regularly regenerate tokens if they're accidentally exposed
-- Consider using environment variables or a configuration file excluded from Git for sensitive data
+- The bot requires "Manage Messages" permission to delete and repost messages - only grant this permission if you trust the bot
+- The bot automatically validates configuration files on startup to prevent malicious modifications
 
 ## License
 
 See LICENSE file for details.
-
-## ToDo
-
-- Add list of filetypes to ignore when scanning
