@@ -2,6 +2,8 @@
 
 import json
 import discord
+from discord import app_commands
+from discord.ext import commands
 import vt
 import aiohttp
 import io
@@ -181,7 +183,58 @@ ignored_filetypes = config.get("ignored_filetypes", default_config["ignored_file
 
 vt_client = vt.Client(virustotal_api_key)
 
-class DiscordClient(discord.Client):
+# Global config variables that will be updated
+config_vars = {
+    'mention_reply_author': mention_reply_author,
+    'timeout_seconds': timeout_seconds,
+    'max_attempts': max_attempts,
+    'ignored_filetypes': ignored_filetypes.copy(),
+    'file_recieved_message': file_recieved_message,
+    'file_too_large_warning': file_too_large_warning,
+    'download_error_warning': download_error_warning,
+    'file_submitted_for_scanning_message': file_submitted_for_scanning_message,
+    'file_scanning_error_message': file_scanning_error_message,
+    'results_recieved_message': results_recieved_message,
+    'scan_timeout_message': scan_timeout_message
+}
+
+def save_config():
+    """Save current config variables to config.json"""
+    with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+        current_config = json.load(f)
+    
+    # Update config with current values
+    current_config['mention_reply_author'] = config_vars['mention_reply_author']
+    current_config['timeout_seconds'] = config_vars['timeout_seconds']
+    current_config['max_attempts'] = config_vars['max_attempts']
+    current_config['ignored_filetypes'] = config_vars['ignored_filetypes']
+    
+    with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
+        json.dump(current_config, f, indent=4)
+
+def reload_config():
+    """Reload config from file and update global variables"""
+    with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+        loaded_config = json.load(f)
+    
+    config_vars['mention_reply_author'] = loaded_config.get('mention_reply_author', default_config['mention_reply_author'])
+    config_vars['timeout_seconds'] = loaded_config.get('timeout_seconds', default_config['timeout_seconds'])
+    config_vars['max_attempts'] = loaded_config.get('max_attempts', default_config['max_attempts'])
+    config_vars['ignored_filetypes'] = loaded_config.get('ignored_filetypes', default_config['ignored_filetypes']).copy()
+
+def is_admin(interaction: discord.Interaction) -> bool:
+    """Check if user has administrator permissions"""
+    if interaction.user.guild_permissions.administrator:
+        return True
+    return False
+
+class DiscordClient(commands.Bot):
+    async def setup_hook(self):
+        """Called when the bot is starting up"""
+        self.tree.add_command(admin_group)
+        await self.tree.sync()
+        print(f'Synced slash commands!')
+
     async def on_ready(self):
         print(f'Logged in as {self.user}!')
 
@@ -192,20 +245,20 @@ class DiscordClient(discord.Client):
         if not message.attachments:
             return
 
-        if any(message.attachments[0].filename.lower().endswith(ext) for ext in ignored_filetypes):
+        if any(message.attachments[0].filename.lower().endswith(ext) for ext in config_vars['ignored_filetypes']):
             print(f'Ignoring attachment {message.attachments[0].filename} from {message.author} due to ignored filetype.')
             return
 
         if len(message.attachments) > 1:
             # Initialize sections with a placeholder for each file
             results_sections = [
-                file_recieved_message.format(filename=att.filename)
+                config_vars['file_recieved_message'].format(filename=att.filename)
                 for att in message.attachments
             ]
 
             separator = "\n\n--------------------------------------------------------------------\n\n"
             combined_message = separator.join(results_sections)
-            reply_msg = await message.reply(combined_message, mention_author=mention_reply_author)
+            reply_msg = await message.reply(combined_message, mention_author=config_vars['mention_reply_author'])
 
             # Process each attachment sequentially and live-update the single message
             for idx, attachment in enumerate(message.attachments):
@@ -215,7 +268,7 @@ class DiscordClient(discord.Client):
                 print(f'Received attachment: {filename} ({file_size} bytes) from {message.author}')
 
                 if file_size >= 1073741824:
-                    results_sections[idx] = file_too_large_warning.format(
+                    results_sections[idx] = config_vars['file_too_large_warning'].format(
                         filename=filename, file_size=file_size
                     )
                     await reply_msg.edit(content=separator.join(results_sections))
@@ -225,7 +278,7 @@ class DiscordClient(discord.Client):
                 async with aiohttp.ClientSession() as session:
                     async with session.get(attachment.url) as resp:
                         if resp.status != 200:
-                            results_sections[idx] = download_error_warning.format(filename=filename)
+                            results_sections[idx] = config_vars['download_error_warning'].format(filename=filename)
                             await reply_msg.edit(content=separator.join(results_sections))
                             print(f'Failed to download attachment {filename}. HTTP status: {resp.status}')
                             continue
@@ -238,7 +291,7 @@ class DiscordClient(discord.Client):
                     async with vt.Client(virustotal_api_key) as vt_client:
                         analysis = await vt_client.scan_file_async(file_stream)
                         print(f'Submitted {filename} for scanning. File Hash: {file_hash}')
-                        results_sections[idx] = file_submitted_for_scanning_message.format(
+                        results_sections[idx] = config_vars['file_submitted_for_scanning_message'].format(
                             filename=filename,
                             file_hash=file_hash
                         )
@@ -254,8 +307,8 @@ class DiscordClient(discord.Client):
                             try:
                                 analysis = await vt_client.get_object_async("/analyses/{}", analysis.id)
                             except Exception as e:
-                                if attempt < max_attempts:
-                                    print(f'Error retrieving analysis for {filename} (attempt {attempt}/{max_attempts}): {e}. Retrying...')
+                                if attempt < config_vars['max_attempts']:
+                                    print(f'Error retrieving analysis for {filename} (attempt {attempt}/{config_vars["max_attempts"]}): {e}. Retrying...')
                                     await asyncio.sleep(5)
                                     continue
                                 else:
@@ -266,7 +319,7 @@ class DiscordClient(discord.Client):
                                 malicious_count = stats.get("malicious", 0)
                                 total_engines = sum(stats.values())
                                 results_url = f'https://www.virustotal.com/gui/file/{file_hash}/detection'
-                                results_sections[idx] = results_recieved_message.format(
+                                results_sections[idx] = config_vars['results_recieved_message'].format(
                                     filename=filename,
                                     malicious_count=malicious_count,
                                     total_engines=total_engines,
@@ -276,18 +329,18 @@ class DiscordClient(discord.Client):
                                 print(f'Scan completed for {filename}. {malicious_count}/{total_engines} vendors marked this file as malicious.')
                                 break
 
-                            if (datetime.now() - start_time).total_seconds() > timeout_seconds:
+                            if (datetime.now() - start_time).total_seconds() > config_vars['timeout_seconds']:
                                 results_url = f'https://www.virustotal.com/gui/file/{file_hash}/detection'
-                                results_sections[idx] = scan_timeout_message.format(
+                                results_sections[idx] = config_vars['scan_timeout_message'].format(
                                     filename=filename,
-                                    timeout=timeout_seconds,
+                                    timeout=config_vars['timeout_seconds'],
                                     results_url=results_url
                                 )
                                 await reply_msg.edit(content=separator.join(results_sections))
-                                print(f'Scan for {filename} timed out after {timeout_seconds} seconds.')
+                                print(f'Scan for {filename} timed out after {config_vars["timeout_seconds"]} seconds.')
                                 break
                 except Exception as e:
-                    results_sections[idx] = file_scanning_error_message.format(
+                    results_sections[idx] = config_vars['file_scanning_error_message'].format(
                         filename=filename,
                         e=e
                     )
@@ -301,14 +354,14 @@ class DiscordClient(discord.Client):
             filename = attachment.filename
 
             reply_msg = await message.reply(
-                file_recieved_message.format(filename=filename),
-                mention_author=mention_reply_author
+                config_vars['file_recieved_message'].format(filename=filename),
+                mention_author=config_vars['mention_reply_author']
             )
 
             print(f'Received attachment: {filename} ({file_size} bytes) from {message.author}')
 
             if file_size >= 1073741824:
-                too_large_message = file_too_large_warning.format(
+                too_large_message = config_vars['file_too_large_warning'].format(
                     filename=filename, file_size=file_size
                 )
                 await reply_msg.edit(too_large_message)
@@ -319,7 +372,7 @@ class DiscordClient(discord.Client):
                 async with session.get(attachment.url) as resp:
                     if resp.status != 200:
                         await reply_msg.edit(
-                            download_error_warning.format(filename=filename)
+                            config_vars['download_error_warning'].format(filename=filename)
                         )
                         print(f'Failed to download attachment {filename}. HTTP status: {resp.status}')
                         continue
@@ -334,7 +387,7 @@ class DiscordClient(discord.Client):
                     analysis = await vt_client.scan_file_async(file_stream)
 
                     await reply_msg.edit(
-                        content = file_submitted_for_scanning_message.format(
+                        content = config_vars['file_submitted_for_scanning_message'].format(
                             filename=filename, 
                             file_hash=file_hash
                             )
@@ -350,8 +403,8 @@ class DiscordClient(discord.Client):
                         try:
                             analysis = await vt_client.get_object_async("/analyses/{}", analysis.id)
                         except Exception as e:
-                            if attempt < max_attempts:
-                                print(f'Error retrieving analysis for {filename} (attempt {attempt}/{max_attempts}): {e}. Retrying...')
+                            if attempt < config_vars['max_attempts']:
+                                print(f'Error retrieving analysis for {filename} (attempt {attempt}/{config_vars["max_attempts"]}): {e}. Retrying...')
                                 await asyncio.sleep(5)
                                 continue
                             else:
@@ -364,7 +417,7 @@ class DiscordClient(discord.Client):
 
                             results_url = f'https://www.virustotal.com/gui/file/{file_hash}/detection'
 
-                            results_message = results_recieved_message.format(
+                            results_message = config_vars['results_recieved_message'].format(
                                 filename=filename,
                                 malicious_count=malicious_count,
                                 total_engines=total_engines,
@@ -376,27 +429,146 @@ class DiscordClient(discord.Client):
                             print(f'Scan completed for {filename}. {malicious_count}/{total_engines} vendors marked this file as malicious.')
                             break
 
-                        if (datetime.now() - start_time).total_seconds() > timeout_seconds:
+                        if (datetime.now() - start_time).total_seconds() > config_vars['timeout_seconds']:
                             results_url = f'https://www.virustotal.com/gui/file/{file_hash}/detection'
-                            timeout_message = scan_timeout_message.format(
+                            timeout_message = config_vars['scan_timeout_message'].format(
                                 filename=filename,
-                                timeout=timeout_seconds,
+                                timeout=config_vars['timeout_seconds'],
                                 results_url=results_url
                             )
                             await reply_msg.edit(content=timeout_message)
 
-                            print(f'Scan for {filename} timed out after {timeout_seconds} seconds.')
+                            print(f'Scan for {filename} timed out after {config_vars["timeout_seconds"]} seconds.')
                             break
             except Exception as e:
-                await reply_msg.edit(content = file_scanning_error_message.format(
+                await reply_msg.edit(content = config_vars['file_scanning_error_message'].format(
                     filename=filename,
                     e=e
                 ))
                 print(f'Error scanning {filename}: {e}')
 
 
+# Slash command group for admin settings
+admin_group = app_commands.Group(name="config", description="Admin commands to manage bot settings")
+
+@admin_group.command(name="view", description="View current bot settings")
+async def config_view(interaction: discord.Interaction):
+    """View current bot configuration"""
+    if not is_admin(interaction):
+        await interaction.response.send_message("❌ You need administrator permissions to use this command.", ephemeral=True)
+        return
+    
+    embed = discord.Embed(title="Bot Configuration", color=discord.Color.blue())
+    embed.add_field(name="Mention Reply Author", value=str(config_vars['mention_reply_author']), inline=True)
+    embed.add_field(name="Timeout (seconds)", value=str(config_vars['timeout_seconds']), inline=True)
+    embed.add_field(name="Max Attempts", value=str(config_vars['max_attempts']), inline=True)
+    embed.add_field(name="Ignored Filetypes", value=", ".join(config_vars['ignored_filetypes']) if config_vars['ignored_filetypes'] else "None", inline=False)
+    
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@admin_group.command(name="mention", description="Toggle whether to mention the author when replying")
+@app_commands.describe(enabled="Whether to mention the author in replies")
+async def config_mention(interaction: discord.Interaction, enabled: bool):
+    """Set mention_reply_author setting"""
+    if not is_admin(interaction):
+        await interaction.response.send_message("❌ You need administrator permissions to use this command.", ephemeral=True)
+        return
+    
+    config_vars['mention_reply_author'] = enabled
+    save_config()
+    await interaction.response.send_message(f"✅ `mention_reply_author` set to `{enabled}`", ephemeral=True)
+
+@admin_group.command(name="timeout", description="Set the scan timeout in seconds")
+@app_commands.describe(seconds="Timeout in seconds (default: 300)")
+async def config_timeout(interaction: discord.Interaction, seconds: int):
+    """Set timeout_seconds setting"""
+    if not is_admin(interaction):
+        await interaction.response.send_message("❌ You need administrator permissions to use this command.", ephemeral=True)
+        return
+    
+    if seconds < 10 or seconds > 3600:
+        await interaction.response.send_message("❌ Timeout must be between 10 and 3600 seconds.", ephemeral=True)
+        return
+    
+    config_vars['timeout_seconds'] = seconds
+    save_config()
+    await interaction.response.send_message(f"✅ `timeout_seconds` set to `{seconds}` seconds", ephemeral=True)
+
+@admin_group.command(name="max_attempts", description="Set the maximum retry attempts for scan results")
+@app_commands.describe(attempts="Maximum number of retry attempts (default: 2)")
+async def config_max_attempts(interaction: discord.Interaction, attempts: int):
+    """Set max_attempts setting"""
+    if not is_admin(interaction):
+        await interaction.response.send_message("❌ You need administrator permissions to use this command.", ephemeral=True)
+        return
+    
+    if attempts < 1 or attempts > 10:
+        await interaction.response.send_message("❌ Max attempts must be between 1 and 10.", ephemeral=True)
+        return
+    
+    config_vars['max_attempts'] = attempts
+    save_config()
+    await interaction.response.send_message(f"✅ `max_attempts` set to `{attempts}`", ephemeral=True)
+
+@admin_group.command(name="ignore_add", description="Add a file extension to the ignored list")
+@app_commands.describe(extension="File extension to ignore (e.g., .exe, .pdf)")
+async def config_ignore_add(interaction: discord.Interaction, extension: str):
+    """Add file extension to ignored_filetypes"""
+    if not is_admin(interaction):
+        await interaction.response.send_message("❌ You need administrator permissions to use this command.", ephemeral=True)
+        return
+    
+    # Ensure extension starts with a dot
+    if not extension.startswith('.'):
+        extension = '.' + extension
+    
+    extension = extension.lower()
+    
+    if extension in config_vars['ignored_filetypes']:
+        await interaction.response.send_message(f"❌ Extension `{extension}` is already in the ignored list.", ephemeral=True)
+        return
+    
+    config_vars['ignored_filetypes'].append(extension)
+    save_config()
+    await interaction.response.send_message(f"✅ Added `{extension}` to ignored filetypes. Current list: {', '.join(config_vars['ignored_filetypes'])}", ephemeral=True)
+
+@admin_group.command(name="ignore_remove", description="Remove a file extension from the ignored list")
+@app_commands.describe(extension="File extension to remove from ignored list (e.g., .txt, .png)")
+async def config_ignore_remove(interaction: discord.Interaction, extension: str):
+    """Remove file extension from ignored_filetypes"""
+    if not is_admin(interaction):
+        await interaction.response.send_message("❌ You need administrator permissions to use this command.", ephemeral=True)
+        return
+    
+    # Ensure extension starts with a dot
+    if not extension.startswith('.'):
+        extension = '.' + extension
+    
+    extension = extension.lower()
+    
+    if extension not in config_vars['ignored_filetypes']:
+        await interaction.response.send_message(f"❌ Extension `{extension}` is not in the ignored list.", ephemeral=True)
+        return
+    
+    config_vars['ignored_filetypes'].remove(extension)
+    save_config()
+    await interaction.response.send_message(f"✅ Removed `{extension}` from ignored filetypes. Current list: {', '.join(config_vars['ignored_filetypes']) if config_vars['ignored_filetypes'] else 'None'}", ephemeral=True)
+
+@admin_group.command(name="ignore_list", description="List all ignored file extensions")
+async def config_ignore_list(interaction: discord.Interaction):
+    """List all ignored filetypes"""
+    if not is_admin(interaction):
+        await interaction.response.send_message("❌ You need administrator permissions to use this command.", ephemeral=True)
+        return
+    
+    if not config_vars['ignored_filetypes']:
+        await interaction.response.send_message("📋 No filetypes are currently ignored.", ephemeral=True)
+    else:
+        await interaction.response.send_message(f"📋 Ignored filetypes: {', '.join(config_vars['ignored_filetypes'])}", ephemeral=True)
+
+
 intents = discord.Intents.default()
 intents.message_content = True
 
-discord.client = DiscordClient(intents=intents)
-discord.client.run(bot_token)
+client = DiscordClient(intents=intents, command_prefix='!')
+client.run(bot_token)
