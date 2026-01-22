@@ -47,7 +47,8 @@ A Discord bot that automatically scans file attachments using VirusTotal's API t
 - Handles large files and timeouts gracefully
 
 ## Demo:
-https://discord.gg/BPRdkATNB6
+[Visit the Discord Server!](https://discord.gg/BPRdkATNB6)
+
 
 ## Prerequisites
 
